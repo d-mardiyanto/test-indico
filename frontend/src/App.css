@@ -1,0 +1,249 @@
+/* Layout shell + activation flow styles. Mobile-first; expands at >=640px. */
+
+.app-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #0b0613 0%, #1a0830 100%);
+  color: #f3f0ff;
+}
+
+.app-shell__brand {
+  padding: 20px 24px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #c7b7ff;
+}
+
+.app-shell__brand span {
+  color: #aa3bff;
+}
+
+.app-shell__main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 16px 20px 48px;
+}
+
+.card {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(170, 59, 255, 0.25);
+  border-radius: 20px;
+  padding: 28px 24px;
+  box-shadow: 0 20px 50px -20px rgba(170, 59, 255, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+@media (min-width: 640px) {
+  .card {
+    padding: 36px 32px;
+  }
+}
+
+.card__eyebrow {
+  font-size: 12px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #c084fc;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+
+.card__title {
+  margin: 0 0 12px;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #fff;
+}
+
+@media (min-width: 640px) {
+  .card__title {
+    font-size: 32px;
+  }
+}
+
+.card__desc {
+  margin: 0 0 24px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #c7c3d4;
+}
+
+.feature-list {
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.feature-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: #ded9ef;
+}
+
+.feature-list li::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #aa3bff 0%, rgba(170, 59, 255, 0) 70%);
+  margin-top: 2px;
+}
+
+.btn {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 14px 20px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, #aa3bff 0%, #6e2bff 100%);
+  color: #fff;
+  box-shadow: 0 10px 30px -10px rgba(170, 59, 255, 0.75);
+}
+
+.btn--primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: #c7b7ff;
+  border: 1px solid rgba(199, 183, 255, 0.4);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: rgba(199, 183, 255, 0.08);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.btn + .btn {
+  margin-top: 12px;
+}
+
+.status {
+  margin: 24px 0 0;
+  padding: 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.status--ok {
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  color: #bbf7d0;
+}
+
+.status--err {
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.status__title {
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.meta {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #9b94b5;
+  display: grid;
+  gap: 6px;
+}
+
+.meta strong {
+  color: #ded9ef;
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+.skeleton {
+  text-align: center;
+  font-size: 14px;
+  color: #c7b7ff;
+  padding: 24px 0;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(199, 183, 255, 0.3);
+  border-top-color: #c7b7ff;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Home / demo subscribe simulator */
+.form {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0 24px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #c7c3d4;
+}
+
+.form input,
+.form select {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(199, 183, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.form input:focus,
+.form select:focus {
+  outline: 2px solid #aa3bff;
+  outline-offset: 1px;
+}
+
+.link {
+  word-break: break-all;
+  color: #c7b7ff;
+}
+
+.note {
+  font-size: 12px;
+  color: #8a82a8;
+  margin-top: 12px;
+  text-align: center;
+}
