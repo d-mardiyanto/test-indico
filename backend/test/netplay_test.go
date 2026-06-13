@@ -1,15 +1,15 @@
-package provider
+package test
 
 import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
 	"backend/internal/client"
 	"backend/internal/model"
+	"backend/internal/provider"
 )
 
 // newTestServer spins up an httptest.Server that returns the given status code
@@ -32,9 +32,9 @@ func TestNetplayProvider_Subscribe_Normalization(t *testing.T) {
 		"status": "pending_activation"
 	}`
 	_, c := newTestServer(t, 200, body)
-	p := NewNetplayProviderWithAPI(c)
+	p := provider.NewNetplayProviderWithAPI(c)
 
-	resp, err := p.Subscribe(context.Background(), SubscribeRequest{
+	resp, err := p.Subscribe(context.Background(), provider.SubscribeRequest{
 		UserID:         "user-1",
 		MSISDN:         "62800",
 		Plan:           "PREMIUM_30D",
@@ -66,7 +66,7 @@ func TestNetplayProvider_Activate_Normalization(t *testing.T) {
 		"message": "ok"
 	}`
 	_, c := newTestServer(t, 200, body)
-	p := NewNetplayProviderWithAPI(c)
+	p := provider.NewNetplayProviderWithAPI(c)
 
 	resp, err := p.Activate(context.Background(), "tok-123")
 	if err != nil {
@@ -95,7 +95,7 @@ func TestNetplayProvider_Status_Normalization(t *testing.T) {
 		"externalReferenceId": "EXT-1"
 	}`
 	_, c := newTestServer(t, 200, body)
-	p := NewNetplayProviderWithAPI(c)
+	p := provider.NewNetplayProviderWithAPI(c)
 
 	resp, err := p.Status(context.Background(), "tok-1")
 	if err != nil {
@@ -115,17 +115,17 @@ func TestNetplayProvider_ErrorMapping(t *testing.T) {
 		status int
 		want   error
 	}{
-		{"401_unauthorized", http.StatusUnauthorized, ErrUnauthorized},
-		{"403_unauthorized", http.StatusForbidden, ErrUnauthorized},
-		{"404_not_found", http.StatusNotFound, ErrNotFound},
-		{"500_unavailable", http.StatusInternalServerError, ErrUnavailable},
-		{"502_unavailable", http.StatusBadGateway, ErrUnavailable},
-		{"400_bad", http.StatusBadRequest, ErrBadResponse},
+		{"401_unauthorized", http.StatusUnauthorized, provider.ErrUnauthorized},
+		{"403_unauthorized", http.StatusForbidden, provider.ErrUnauthorized},
+		{"404_not_found", http.StatusNotFound, provider.ErrNotFound},
+		{"500_unavailable", http.StatusInternalServerError, provider.ErrUnavailable},
+		{"502_unavailable", http.StatusBadGateway, provider.ErrUnavailable},
+		{"400_bad", http.StatusBadRequest, provider.ErrBadResponse},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, c := newTestServer(t, tc.status, `{"error":"x"}`)
-			p := NewNetplayProviderWithAPI(c)
+			p := provider.NewNetplayProviderWithAPI(c)
 			_, err := p.Activate(context.Background(), "tok")
 			if err == nil {
 				t.Fatal("expected error")
@@ -144,13 +144,13 @@ func TestNetplayProvider_TimeoutMapping(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := client.NewNetplayClient(srv.URL, 2*time.Second)
-	p := NewNetplayProviderWithAPI(c)
+	p := provider.NewNetplayProviderWithAPI(c)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	_, err := p.Activate(ctx, "tok")
-	if err != ErrTimeout {
-		t.Errorf("got %v, want %v", err, ErrTimeout)
+	if err != provider.ErrTimeout {
+		t.Errorf("got %v, want %v", err, provider.ErrTimeout)
 	}
 }
 
@@ -163,9 +163,9 @@ func TestNetplayProvider_Subscribe_SendsIdempotencyKey(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := client.NewNetplayClient(srv.URL, 2*time.Second)
-	p := NewNetplayProviderWithAPI(c)
+	p := provider.NewNetplayProviderWithAPI(c)
 
-	_, err := p.Subscribe(context.Background(), SubscribeRequest{
+	_, err := p.Subscribe(context.Background(), provider.SubscribeRequest{
 		UserID: "u", MSISDN: "m", Plan: "p", IdempotencyKey: "MY-KEY",
 	})
 	if err != nil {
@@ -189,11 +189,8 @@ func TestNormalizeStatus(t *testing.T) {
 		"weird-value":        model.StatusUnknown,
 	}
 	for in, want := range cases {
-		if got := normalizeStatus(in); got != want {
-			t.Errorf("normalizeStatus(%q) = %q, want %q", in, got, want)
+		if got := provider.NormalizeStatus(in); got != want {
+			t.Errorf("NormalizeStatus(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
-
-// Suppress unused import warning for strings if go decides to optimize away.
-var _ = strings.TrimSpace

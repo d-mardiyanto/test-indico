@@ -51,7 +51,7 @@ func (p *NetplayProvider) Subscribe(ctx context.Context, req SubscribeRequest) (
 	return &SubscribeResponse{
 		ProviderRequestID: raw.SubscriptionRequestID,
 		ActivationToken:   raw.ActivationToken,
-		Status:            normalizeStatus(raw.Status),
+		Status:            NormalizeStatus(raw.Status),
 		RawMessage:        raw.Message,
 	}, nil
 }
@@ -61,7 +61,7 @@ func (p *NetplayProvider) Activate(ctx context.Context, token string) (*Activate
 	if err != nil {
 		return nil, mapNetplayError(err)
 	}
-	status := normalizeStatus(raw.SubscriptionStatus)
+	status := NormalizeStatus(raw.SubscriptionStatus)
 	// Treat explicit activation failure as failed even if subscriptionStatus is empty.
 	if raw.ActivationStatus != "" && raw.ActivationStatus != "success" && status == model.StatusUnknown {
 		status = model.StatusFailed
@@ -84,7 +84,7 @@ func (p *NetplayProvider) Status(ctx context.Context, token string) (*StatusResp
 		ProviderRequestID:   raw.SubscriptionRequestID,
 		UserID:              raw.UserID,
 		Plan:                raw.Plan,
-		Status:              normalizeStatus(raw.SubscriptionStatus),
+		Status:              NormalizeStatus(raw.SubscriptionStatus),
 		ExternalReferenceID: raw.ExternalReferenceID,
 		ActivatedAt:         parseTime(raw.ActivatedAt),
 		TokenExpiresAt:      parseTime(raw.TokenExpiresAt),
@@ -92,8 +92,8 @@ func (p *NetplayProvider) Status(ctx context.Context, token string) (*StatusResp
 	}, nil
 }
 
-// normalizeStatus maps NETPLAY status strings to our canonical model.Status*.
-func normalizeStatus(s string) string {
+// NormalizeStatus maps NETPLAY status strings to our canonical model.Status*.
+func NormalizeStatus(s string) string {
 	switch s {
 	case "active", "ACTIVE":
 		return model.StatusActive
