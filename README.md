@@ -35,27 +35,37 @@ from the partner before responding.
 
 ## Running locally
 
-### Prerequisites
+There are **two ways** to run the project locally:
+
+1. **Native** — run the Go backend and the Vite dev server directly on your
+   machine. Best for active development & hot reload.
+2. **Docker Compose** — one command, no Go/Node toolchain required.
+
+---
+
+### Option 1 — Native (Go + Node)
+
+**Prerequisites**
 
 - Go **1.25+**
 - Node **20+** & npm
 
-### 1. Backend
+**1. Backend**
 
 ```bash
 cd backend
+cp .env.example .env   # optional — defaults work for local
 go run ./cmd
 ```
 
-The server listens on `:8080` by default and is pre-configured to talk to
-the assignment's NETPLAY base URL.
+The server listens on `:8080` and is pre-configured to talk to the
+assignment's NETPLAY base URL.
 
-### 2. Frontend
-
-In a second terminal:
+**2. Frontend** (in a second terminal)
 
 ```bash
 cd frontend
+cp .env.example .env   # optional — defaults work for local
 npm install
 npm run dev
 ```
@@ -65,22 +75,28 @@ Open <http://localhost:5173>. The Home page is a small **demo simulator**
 `POST /api/subscribe` so you can grab an activation link without a real
 upstream caller. In production this page would not exist.
 
-### Running tests
+**3. Running tests**
 
 ```bash
 cd backend
 go test ./... -count=1
 ```
 
-### 3. Docker (one-command boot)
+---
 
-A `docker-compose.yml` is provided at the repo root. It builds both images
-and wires the env vars so the activation link → CORS → API base URL chain
-works out of the box.
+### Option 2 — Docker Compose (one-command boot)
+
+**Prerequisites**
+
+- Docker **24+** with the Compose plugin (`docker compose ...`).
+
+A `docker-compose.yml` at the repo root builds both images and wires the
+env vars so the activation link → CORS → API base URL chain works out of
+the box.
 
 ```bash
 docker compose up --build
-# backend → http://localhost:8080
+# backend  → http://localhost:8080
 # frontend → http://localhost:5173
 ```
 
@@ -90,16 +106,28 @@ Tear down:
 docker compose down
 ```
 
-The frontend image is a static Nginx bundle (`frontend/Dockerfile`) with
-SPA fallback configured in `frontend/nginx.conf` so deep links like
-`/activation/ABC123` work on a hard refresh. The backend image is a
-distroless static binary (`backend/Dockerfile`).
+What you get:
 
-If you change `VITE_API_BASE_URL` for a non-local deployment, pass it as a
-build arg (Vite inlines the value at build time):
+- **Backend image** — multi-stage build from `golang:1.25-alpine` into a
+  distroless `nonroot` static binary (`backend/Dockerfile`). Exposes `:8080`.
+- **Frontend image** — Vite build served by `nginx:1.27-alpine` with SPA
+  fallback configured in `frontend/nginx.conf`, so deep links like
+  `/activation/ABC123` survive a hard refresh. Exposes `:80`, mapped to
+  host `:5173`.
+
+To change the API URL for a non-local deployment, override the build arg
+(Vite inlines `VITE_*` values at build time):
 
 ```bash
-docker build --build-arg VITE_API_BASE_URL=https://api.example.com ./frontend
+docker compose build \
+  --build-arg VITE_API_BASE_URL=https://api.example.com frontend
+```
+
+Run the backend test suite inside Docker (no local Go required):
+
+```bash
+docker run --rm -v "$PWD/backend":/src -w /src golang:1.25-alpine \
+  go test ./... -count=1
 ```
 
 ## Environment variables

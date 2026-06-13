@@ -1,5 +1,20 @@
 # Architecture Note
 
+**Architectural style: Layered (Clean Architecture–lite) with a Ports &
+Adapters boundary at the partner edge.** The backend is split into four
+inward-pointing layers — `handler` (delivery / HTTP), `service`
+(use-case orchestration), `provider` (port: the `Provider` interface), and
+`client` + concrete `provider/<partner>.go` files (adapters). `storage`
+acts as a tiny repository, and `model` holds the partner-agnostic domain
+record. Dependencies only flow inward: handlers know about services,
+services know about the `Provider` port, and only the adapter implementations
+know about each partner's wire format. This lets us add new OTT partners by
+writing one new adapter without touching handlers, service, or storage.
+
+The frontend is a small client-side React SPA (Vite + React Router) with a
+plain state-machine pattern on the activation page; there is no global
+store, since the only stateful flow is the per-page activation lifecycle.
+
 A short tour of how the integration is structured and the trade-offs taken.
 
 ## Layered backend
