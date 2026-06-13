@@ -72,6 +72,36 @@ cd backend
 go test ./... -count=1
 ```
 
+### 3. Docker (one-command boot)
+
+A `docker-compose.yml` is provided at the repo root. It builds both images
+and wires the env vars so the activation link → CORS → API base URL chain
+works out of the box.
+
+```bash
+docker compose up --build
+# backend → http://localhost:8080
+# frontend → http://localhost:5173
+```
+
+Tear down:
+
+```bash
+docker compose down
+```
+
+The frontend image is a static Nginx bundle (`frontend/Dockerfile`) with
+SPA fallback configured in `frontend/nginx.conf` so deep links like
+`/activation/ABC123` work on a hard refresh. The backend image is a
+distroless static binary (`backend/Dockerfile`).
+
+If you change `VITE_API_BASE_URL` for a non-local deployment, pass it as a
+build arg (Vite inlines the value at build time):
+
+```bash
+docker build --build-arg VITE_API_BASE_URL=https://api.example.com ./frontend
+```
+
 ## Environment variables
 
 ### Backend

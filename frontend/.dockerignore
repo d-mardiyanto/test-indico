@@ -1,0 +1,10 @@
+node_modules
+dist
+.vite
+.env
+.env.*
+.eslintcache
+Dockerfile
+.dockerignore
+README.md
+.git
