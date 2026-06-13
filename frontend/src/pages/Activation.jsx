@@ -4,7 +4,7 @@
 // states.
 
 import { useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 
 const FEATURES = [
@@ -16,9 +16,29 @@ const FEATURES = [
 
 export default function Activation() {
   const { code } = useParams()
+  const navigate = useNavigate()
   const [phase, setPhase] = useState('loading') // loading | ready | activating | active | error
   const [sub, setSub] = useState(null)
   const [error, setError] = useState(null)
+
+  // resolveStatus maps a subscription record to a UI phase + optional error.
+  // failed / expired are terminal at the partner level, so we surface them as
+  // the error state instead of silently dropping back to the Activate button.
+  const resolveStatus = (data) => {
+    const s = data?.subscriptionStatus
+    if (s === 'active') return { phase: 'active' }
+    if (s === 'failed' || s === 'expired') {
+      return {
+        phase: 'error',
+        error: {
+          code: s,
+          message: data?.message || `Activation ${s}. Please start over.`,
+          terminal: true,
+        },
+      }
+    }
+    return { phase: 'ready' }
+  }
 
   const load = useCallback(async () => {
     setPhase('loading')
@@ -26,7 +46,9 @@ export default function Activation() {
     try {
       const data = await api.status(code)
       setSub(data)
-      setPhase(data.subscriptionStatus === 'active' ? 'active' : 'ready')
+      const next = resolveStatus(data)
+      setError(next.error || null)
+      setPhase(next.phase)
     } catch (err) {
       setError(err)
       setPhase('error')
@@ -43,11 +65,24 @@ export default function Activation() {
     try {
       const data = await api.activate(code)
       setSub(data)
-      setPhase(data.subscriptionStatus === 'active' ? 'active' : 'ready')
+      const next = resolveStatus(data)
+      setError(next.error || null)
+      setPhase(next.phase)
     } catch (err) {
       setError(err)
       setPhase('error')
     }
+  }
+
+  // onRetry: re-call activate for transient failures; for terminal partner
+  // failures (failed/expired) or unknown subscriptions, send the user home
+  // so they can start a new subscribe flow.
+  const onRetry = () => {
+    if (error?.terminal || error?.code === 'not_found' || !sub) {
+      navigate('/')
+      return
+    }
+    activate()
   }
 
   return (
@@ -104,8 +139,8 @@ export default function Activation() {
                 </p>
                 <p>{error?.message || 'Please try again.'}</p>
               </div>
-              <button className="btn btn--primary" onClick={sub ? activate : load}>
-                Retry
+              <button className="btn btn--primary" style={{ marginTop: '1rem' }} onClick={onRetry}>
+                {error?.terminal || error?.code === 'not_found' || !sub ? 'Back to home' : 'Retry'}
               </button>
             </>
           )}

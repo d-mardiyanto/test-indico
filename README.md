@@ -130,6 +130,89 @@ docker run --rm -v "$PWD/backend":/src -w /src golang:1.25-alpine \
   go test ./... -count=1
 ```
 
+## Triggering a failed activation (for testing)
+
+The live NETPLAY sandbox returns success for the assignment's tokens, so to
+exercise the **failure** branches you need to point the backend at a mock
+partner. Failure can surface in two ways:
+
+1. **Body-level failure** — partner returns `2xx` but with a non-success
+   `subscriptionStatus` (`failed`, `activation_failed`, `expired`) or with
+   `activationStatus != "success"`. Mapped by `provider.NormalizeStatus`
+   (see `backend/internal/provider/netplay.go`).
+2. **HTTP-level failure** — partner returns an error status, mapped by
+   `mapNetplayError`:
+   - `401 / 403` → `ErrUnauthorized` → **401** to client
+   - `404` → `ErrNotFound` → **404**
+   - `5xx` → `ErrUnavailable` → **502**
+   - other `4xx` → `ErrBadResponse` → **400**
+   - context deadline → `ErrTimeout` → **504**
+
+### Quickest way: a one-file mock partner
+
+```bash
+cat > /tmp/fail-partner.go <<'EOF'
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func main() {
+	http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"subscriptionRequestId":"SUBREQ-FAIL","activationToken":"tok-bad","status":"pending_activation"}`)
+	})
+	http.HandleFunc("/activate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// Force a failed activation in the response body.
+		fmt.Fprint(w, `{"provider":"NETPLAY","activationStatus":"failed","subscriptionStatus":"activation_failed","message":"token expired"}`)
+	})
+	_ = http.ListenAndServe(":9999", nil)
+}
+EOF
+go run /tmp/fail-partner.go
+```
+
+Then point the backend at it and restart:
+
+```bash
+# backend/.env
+NETPLAY_BASE_URL=http://localhost:9999
+```
+
+```bash
+cd backend && go run ./cmd
+```
+
+Run a normal Subscribe → Activate flow from the UI; the resulting
+subscription will land in `subscriptionStatus: "failed"` and the activation
+page will show its **error** state.
+
+### Variations
+
+Swap the `/activate` handler body to exercise other branches:
+
+```go
+// 401 → ErrUnauthorized
+w.WriteHeader(http.StatusUnauthorized)
+
+// 500 → ErrUnavailable (client receives 502)
+w.WriteHeader(http.StatusInternalServerError)
+
+// timeout → ErrTimeout (client receives 504)
+// also set HTTP_TIMEOUT_MS=200 in backend/.env so this triggers fast
+time.Sleep(2 * time.Second)
+```
+
+### Re-activation guard
+
+The service short-circuits when the local record is already `active`
+(`subscription_service.go`: returns the existing record without calling the
+partner). To force a re-call, restart the backend (in-memory storage is
+wiped) and run a fresh Subscribe before Activate.
+
 ## Environment variables
 
 ### Backend
