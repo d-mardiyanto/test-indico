@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1.7
+# Mock NETPLAY partner used to exercise failure branches end-to-end.
+# Built from the same module as the real backend.
+
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+    -o /out/mockpartner ./cmd/mockpartner
+
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
+COPY --from=build /out/mockpartner /app/mockpartner
+EXPOSE 9999
+USER nonroot:nonroot
+ENTRYPOINT ["/app/mockpartner"]

@@ -26,6 +26,25 @@ services:
       HTTP_TIMEOUT_MS: "5000"
     restart: unless-stopped
 
+  # Opt-in NETPLAY mock used to exercise failure branches end-to-end.
+  # Start with:  docker compose --profile mock up --build
+  # Then point the backend at it by setting NETPLAY_BASE_URL=http://mockpartner:9999
+  # (override via an .env file or `docker compose run -e ...`).
+  # MODE controls what /activate returns: active|pending|failed|expired|unknown|http401|http500|timeout
+  mockpartner:
+    profiles: ["mock"]
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.mockpartner
+    image: indico-ott-mockpartner:local
+    container_name: indico-ott-mockpartner
+    ports:
+      - "9999:9999"
+    environment:
+      PORT: "9999"
+      MODE: "${MOCK_MODE:-failed}"
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

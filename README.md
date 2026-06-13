@@ -148,63 +148,47 @@ partner. Failure can surface in two ways:
    - other `4xx` → `ErrBadResponse` → **400**
    - context deadline → `ErrTimeout` → **504**
 
-### Quickest way: a one-file mock partner
+### Bundled mock partner: `cmd/mockpartner`
+
+A ready-made stand-in lives at `backend/cmd/mockpartner`. Pick a `MODE` and
+run it; the backend talks to it once you flip `NETPLAY_BASE_URL`.
+
+| `MODE`    | Effect on `/activate`                         | Final status            |
+| --------- | --------------------------------------------- | ----------------------- |
+| `active`  | `subscriptionStatus=active`                   | `active`                |
+| `pending` | `subscriptionStatus=pending_activation`       | `pending_activation`    |
+| `failed`  | `subscriptionStatus=activation_failed`        | `failed`                |
+| `expired` | `subscriptionStatus=expired`                  | `expired`               |
+| `unknown` | `subscriptionStatus=weird-value`              | `unknown`               |
+| `http401` | returns `401 Unauthorized`                    | `ErrUnauthorized` → 401 |
+| `http500` | returns `500 Internal Server Error`           | `ErrUnavailable` → 502  |
+| `timeout` | sleeps 10s (set `HTTP_TIMEOUT_MS=500`)        | `ErrTimeout` → 504      |
+
+**Run natively** (in a second terminal):
 
 ```bash
-cat > /tmp/fail-partner.go <<'EOF'
-package main
-
-import (
-	"fmt"
-	"net/http"
-)
-
-func main() {
-	http.HandleFunc("/subscribe", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"subscriptionRequestId":"SUBREQ-FAIL","activationToken":"tok-bad","status":"pending_activation"}`)
-	})
-	http.HandleFunc("/activate", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		// Force a failed activation in the response body.
-		fmt.Fprint(w, `{"provider":"NETPLAY","activationStatus":"failed","subscriptionStatus":"activation_failed","message":"token expired"}`)
-	})
-	_ = http.ListenAndServe(":9999", nil)
-}
-EOF
-go run /tmp/fail-partner.go
+cd backend
+MODE=failed go run ./cmd/mockpartner            # listens on :9999
 ```
 
-Then point the backend at it and restart:
+Then point the backend at it (`backend/.env`) and restart `go run ./cmd`:
 
-```bash
-# backend/.env
+```
 NETPLAY_BASE_URL=http://localhost:9999
 ```
 
+**Or via Docker Compose** — a `mock` profile is wired up:
+
 ```bash
-cd backend && go run ./cmd
+MOCK_MODE=failed docker compose --profile mock up --build mockpartner
+# In another shell, restart the backend pointed at the mock service:
+docker compose run --rm -e NETPLAY_BASE_URL=http://mockpartner:9999 \
+  --service-ports backend
 ```
 
 Run a normal Subscribe → Activate flow from the UI; the resulting
-subscription will land in `subscriptionStatus: "failed"` and the activation
-page will show its **error** state.
-
-### Variations
-
-Swap the `/activate` handler body to exercise other branches:
-
-```go
-// 401 → ErrUnauthorized
-w.WriteHeader(http.StatusUnauthorized)
-
-// 500 → ErrUnavailable (client receives 502)
-w.WriteHeader(http.StatusInternalServerError)
-
-// timeout → ErrTimeout (client receives 504)
-// also set HTTP_TIMEOUT_MS=200 in backend/.env so this triggers fast
-time.Sleep(2 * time.Second)
-```
+subscription will land in `subscriptionStatus: "failed"` (or whatever
+`MODE` you chose) and the activation page will show its **error** state.
 
 ### Re-activation guard
 
