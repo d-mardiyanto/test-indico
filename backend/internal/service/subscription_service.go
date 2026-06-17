@@ -77,6 +77,7 @@ type SubscribeInput struct {
 	MSISDN   string
 	Provider string
 	Plan     string
+	Extras   map[string]string // provider-specific fields (e.g. accountEmail for DisneyPlus)
 }
 
 // SubscribeResult is the normalized result for a subscribe call, including
@@ -97,8 +98,13 @@ type SubscribeResult struct {
 //  4. Persist a Subscription record keyed by activation code.
 //  5. Build the activation link and SMS-style message returned to the caller.
 func (s *SubscriptionService) Subscribe(ctx context.Context, in SubscribeInput) (*SubscribeResult, error) {
-	if in.UserID == "" || in.MSISDN == "" || in.Plan == "" || in.Provider == "" {
-		return nil, fmt.Errorf("%w: userId, msisdn, provider, plan are required", ErrInvalidRequest)
+	if in.Provider == "" {
+		return nil, fmt.Errorf("%w: provider is required", ErrInvalidRequest)
+	}
+	// Standard providers require userId/msisdn/plan; providers that use Extras
+	// for their own field set skip this check.
+	if len(in.Extras) == 0 && (in.UserID == "" || in.MSISDN == "" || in.Plan == "") {
+		return nil, fmt.Errorf("%w: userId, msisdn, plan are required", ErrInvalidRequest)
 	}
 
 	p, ok := s.registry.Get(in.Provider)
@@ -116,6 +122,7 @@ func (s *SubscriptionService) Subscribe(ctx context.Context, in SubscribeInput) 
 		MSISDN:         in.MSISDN,
 		Plan:           in.Plan,
 		IdempotencyKey: uuid.NewString(),
+		Extras:         in.Extras,
 	})
 	if err != nil {
 		return nil, err

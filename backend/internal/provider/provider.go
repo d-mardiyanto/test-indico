@@ -18,11 +18,14 @@ type Provider interface {
 }
 
 // SubscribeRequest is the normalized input to a provider's subscribe call.
+// Extras carries provider-specific fields (e.g. accountEmail for DisneyPlus)
+// that don't fit the standard UserID/MSISDN/Plan contract.
 type SubscribeRequest struct {
 	UserID         string
 	MSISDN         string
 	Plan           string
 	IdempotencyKey string
+	Extras         map[string]string
 }
 
 // SubscribeResponse is the normalized subscribe result.

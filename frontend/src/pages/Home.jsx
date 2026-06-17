@@ -3,18 +3,74 @@
 // form here that calls /api/subscribe and shows the SMS-style activation
 // link the backend would normally deliver via SMS.
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 
+// Per-provider field definitions. Each entry declares which form fields are
+// shown when that provider is selected, with labels and default values.
+const PROVIDER_FIELDS = {
+  NETPLAY: [
+    { name: 'userId',  label: 'User ID',  type: 'text',  defaultValue: 'user-123' },
+    { name: 'msisdn',  label: 'MSISDN',   type: 'text',  defaultValue: '6281234567890' },
+    { name: 'plan',    label: 'Plan',     type: 'text',  defaultValue: 'PREMIUM_30D' },
+  ],
+  NETFLIX: [
+    { name: 'userId',  label: 'User ID',      type: 'text',  defaultValue: 'user-123' },
+    { name: 'msisdn',  label: 'Phone Number', type: 'text',  defaultValue: '6281234567890' },
+    { name: 'plan',    label: 'Content Plan', type: 'text',  defaultValue: 'STANDARD_4K' },
+  ],
+  DISNEYPLUS: [
+    { name: 'accountEmail',     label: 'Account Email',     type: 'email', defaultValue: 'user@example.com' },
+    { name: 'subscriptionTier', label: 'Subscription Tier', type: 'text',  defaultValue: 'PREMIUM' },
+    { name: 'region',           label: 'Region',            type: 'text',  defaultValue: 'ID' },
+    { name: 'profileName',      label: 'Profile Name',      type: 'text',  defaultValue: 'Main Profile' },
+  ],
+}
+
+// Fallback fields for unknown/new providers loaded from the backend.
+const DEFAULT_FIELDS = [
+  { name: 'userId', label: 'User ID', type: 'text',  defaultValue: '' },
+  { name: 'msisdn', label: 'MSISDN',  type: 'text',  defaultValue: '' },
+  { name: 'plan',   label: 'Plan',    type: 'text',  defaultValue: '' },
+]
+
+function buildDefaults(providerName) {
+  const fields = PROVIDER_FIELDS[providerName] || DEFAULT_FIELDS
+  return Object.fromEntries(fields.map((f) => [f.name, f.defaultValue]))
+}
+
 export default function Home() {
-  const [form, setForm] = useState({
-    userId: 'user-123',
-    msisdn: '6281234567890',
-    provider: 'NETPLAY',
-    plan: 'PREMIUM_30D',
-  })
+  const [providers, setProviders] = useState([])
+  const [providersLoading, setProvidersLoading] = useState(true)
+  const [selectedProvider, setSelectedProvider] = useState('')
+  const [fields, setFields] = useState([])
+  const [form, setForm] = useState({})
   const [state, setState] = useState({ status: 'idle' })
+
+  useEffect(() => {
+    api.providers()
+      .then((data) => {
+        const list = data.providers || []
+        setProviders(list)
+        if (list.length > 0) {
+          const first = list[0]
+          setSelectedProvider(first)
+          setFields(PROVIDER_FIELDS[first] || DEFAULT_FIELDS)
+          setForm(buildDefaults(first))
+        }
+      })
+      .catch(() => setProviders([]))
+      .finally(() => setProvidersLoading(false))
+  }, [])
+
+  const onProviderChange = (e) => {
+    const name = e.target.value
+    setSelectedProvider(name)
+    setFields(PROVIDER_FIELDS[name] || DEFAULT_FIELDS)
+    setForm(buildDefaults(name))
+    setState({ status: 'idle' })
+  }
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -22,7 +78,7 @@ export default function Home() {
     e.preventDefault()
     setState({ status: 'loading' })
     try {
-      const res = await api.subscribe(form)
+      const res = await api.subscribe({ ...form, provider: selectedProvider })
       setState({ status: 'success', data: res })
     } catch (err) {
       setState({ status: 'error', message: err.message })
@@ -45,25 +101,37 @@ export default function Home() {
 
           <form className="form" onSubmit={onSubmit}>
             <label>
-              User ID
-              <input name="userId" value={form.userId} onChange={onChange} required />
-            </label>
-            <label>
-              MSISDN
-              <input name="msisdn" value={form.msisdn} onChange={onChange} required />
-            </label>
-            <label>
               Provider
-              <input name="provider" value={form.provider} onChange={onChange} required />
+              {providersLoading ? (
+                <select disabled><option>Loading…</option></select>
+              ) : providers.length > 0 ? (
+                <select value={selectedProvider} onChange={onProviderChange} required>
+                  {providers.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              ) : (
+                <input value={selectedProvider} onChange={(e) => onProviderChange(e)} required placeholder="e.g. NETPLAY" />
+              )}
             </label>
-            <label>
-              Plan
-              <input name="plan" value={form.plan} onChange={onChange} required />
-            </label>
+
+            {fields.map((f) => (
+              <label key={f.name}>
+                {f.label}
+                <input
+                  name={f.name}
+                  type={f.type}
+                  value={form[f.name] ?? ''}
+                  onChange={onChange}
+                  required
+                />
+              </label>
+            ))}
+
             <button
               className="btn btn--primary"
               type="submit"
-              disabled={state.status === 'loading'}
+              disabled={state.status === 'loading' || providersLoading}
             >
               {state.status === 'loading' ? 'Sending…' : 'Send subscribe request'}
             </button>

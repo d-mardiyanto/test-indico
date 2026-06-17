@@ -28,7 +28,9 @@ func main() {
 
 	// Provider registry: add more partners here as they are integrated.
 	netplay := provider.NewNetplayProvider(cfg.NetplayBaseURL, cfg.HTTPTimeout)
-	registry := provider.NewRegistry(netplay)
+	netflix := provider.NewNetflixProvider(cfg.NetflixBaseURL, cfg.HTTPTimeout)
+	disneyplus := provider.NewDisneyPlusProvider(cfg.DisneyPlusBaseURL, cfg.HTTPTimeout)
+	registry := provider.NewRegistry(netplay, netflix, disneyplus)
 
 	// In-memory store (see README for rationale).
 	store := storage.NewMemoryStorage()
@@ -83,20 +85,24 @@ func main() {
 // ---- Config -----------------------------------------------------------------
 
 type config struct {
-	Port            string
-	NetplayBaseURL  string
-	FrontendBaseURL string
-	HTTPTimeout     time.Duration
-	AllowedOrigins  []string
+	Port              string
+	NetplayBaseURL    string
+	NetflixBaseURL    string
+	DisneyPlusBaseURL string
+	FrontendBaseURL   string
+	HTTPTimeout       time.Duration
+	AllowedOrigins    []string
 }
 
 func loadConfig() config {
 	return config{
-		Port:            getenv("PORT", "8080"),
-		NetplayBaseURL:  getenv("NETPLAY_BASE_URL", "https://ctazh5lrhe.execute-api.ap-southeast-3.amazonaws.com/dev/api"),
-		FrontendBaseURL: getenv("FRONTEND_BASE_URL", "http://localhost:5173"),
-		HTTPTimeout:     getenvDuration("HTTP_TIMEOUT_MS", 5000),
-		AllowedOrigins:  []string{getenv("FRONTEND_BASE_URL", "http://localhost:5173")},
+		Port:              getenv("PORT", "8080"),
+		NetplayBaseURL:    getenv("NETPLAY_BASE_URL", "https://ctazh5lrhe.execute-api.ap-southeast-3.amazonaws.com/dev/api"),
+		NetflixBaseURL:    getenv("NETFLIX_BASE_URL", "https://api.netflix-partner.example.com/v1"),
+		DisneyPlusBaseURL: getenv("DISNEYPLUS_BASE_URL", "https://api.disneyplus-partner.example.com"),
+		FrontendBaseURL:   getenv("FRONTEND_BASE_URL", "http://localhost:5173"),
+		HTTPTimeout:       getenvDuration("HTTP_TIMEOUT_MS", 5000),
+		AllowedOrigins:    []string{getenv("FRONTEND_BASE_URL", "http://localhost:5173")},
 	}
 }
 

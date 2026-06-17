@@ -22,6 +22,8 @@ services:
     environment:
       PORT: "8080"
       NETPLAY_BASE_URL: "https://ctazh5lrhe.execute-api.ap-southeast-3.amazonaws.com/dev/api"
+      NETFLIX_BASE_URL: "https://api.netflix-partner.example.com/v1"
+      DISNEYPLUS_BASE_URL: "https://api.disneyplus-partner.example.com"
       FRONTEND_BASE_URL: "http://localhost:5173"
       HTTP_TIMEOUT_MS: "5000"
     restart: unless-stopped

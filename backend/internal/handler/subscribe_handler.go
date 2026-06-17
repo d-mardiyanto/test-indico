@@ -37,11 +37,20 @@ func (h *Handler) Register(r *gin.Engine) {
 // ---- /api/subscribe ---------------------------------------------------------
 
 // subscribeRequest is the inbound payload from the post-purchase platform.
+// Standard fields (userId, msisdn, plan) are used by NETPLAY and NETFLIX.
+// Provider-specific fields (accountEmail, subscriptionTier, region, profileName)
+// are passed through as Extras for providers like DISNEYPLUS.
 type subscribeRequest struct {
-	UserID   string `json:"userId" binding:"required"`
-	MSISDN   string `json:"msisdn" binding:"required"`
 	Provider string `json:"provider" binding:"required"`
-	Plan     string `json:"plan" binding:"required"`
+	// NETPLAY / NETFLIX
+	UserID string `json:"userId"`
+	MSISDN string `json:"msisdn"`
+	Plan   string `json:"plan"`
+	// DISNEYPLUS
+	AccountEmail     string `json:"accountEmail"`
+	SubscriptionTier string `json:"subscriptionTier"`
+	Region           string `json:"region"`
+	ProfileName      string `json:"profileName"`
 }
 
 // subscribeResponse mirrors the SMS-style payload returned to the caller.
@@ -62,11 +71,26 @@ func (h *Handler) Subscribe(c *gin.Context) {
 		return
 	}
 
+	extras := map[string]string{}
+	if req.AccountEmail != "" {
+		extras["accountEmail"] = req.AccountEmail
+	}
+	if req.SubscriptionTier != "" {
+		extras["subscriptionTier"] = req.SubscriptionTier
+	}
+	if req.Region != "" {
+		extras["region"] = req.Region
+	}
+	if req.ProfileName != "" {
+		extras["profileName"] = req.ProfileName
+	}
+
 	res, err := h.svc.Subscribe(c.Request.Context(), service.SubscribeInput{
 		UserID:   req.UserID,
 		MSISDN:   req.MSISDN,
 		Provider: req.Provider,
 		Plan:     req.Plan,
+		Extras:   extras,
 	})
 	if err != nil {
 		writeServiceError(c, err)
